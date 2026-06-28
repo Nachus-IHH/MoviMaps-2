@@ -1,0 +1,18 @@
+# .gitattributes
+
+/mvnw text eol=lf
+
+# Configurar comportamiento por defecto para normalizar saltos de línea
+* text=auto
+
+# Asegurar que los scripts mantengan saltos de línea LF (Linux/Mac)
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Asegurar que los scripts de Windows mantengan CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Tratar archivos binarios correctamente
+*.jar binary
+*.war binary
