@@ -1,0 +1,23 @@
+# .dockerignore
+
+### Git ###
+.git
+.gitignore
+
+### Maven output ###
+target/
+
+### IDEs ###
+.idea/
+.vscode/
+.nvim/
+
+### Logs ###
+*.log
+
+### Local environment ###
+.env
+
+### Documentation ###
+docs/
+HELP.md
