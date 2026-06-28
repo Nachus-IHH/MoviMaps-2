@@ -1,0 +1,95 @@
+# docker-compose.yaml
+
+# --- Plantilla env-base (common env) ---
+x-environment: &env-base
+    DB_URL: ${DB_URL}
+    DB_USERNAME: ${DB_USERNAME}
+    DB_PASSWORD: ${DB_PASSWORD}
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    OSMR_URL: ${OSMR_URL:-http://osrm-engine:5000}
+
+# --- Plantilla app-base (contenedor) ---
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+  depends_on:
+    database:
+      condition: service_healthy
+    osrm-engine:
+      condition: service_started
+
+  networks:
+    - movimaps-network
+
+
+services:
+  # --- Database (PostgreSQL + PostGIS) ---
+  database:
+    image: postgis/postgis:17-3.5-alpine
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: movimaps
+
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - movimaps-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d movimaps"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # --- Back api diurna - Baja latencia (MQTT y peticiones de usuario) ---
+  back-api-diurna:
+    <<: *app-base
+    ports:
+      - "8080:8080"
+
+    environment:
+      <<: *env-base
+      # +UseZGC - pausas de limpieza menores a 1ms (Tiempo real)
+      # MaxMetaspaceSize - espacios para metadatos de clases
+      JAVA_TOOL_OPTIONS: "-Xms512m -Xmx512m -XX:+UseZGC -XX:MaxMetaspaceSize=128m"
+
+    command: ["--mode=api"]
+
+  # --- back batch nocturno - Rendimiento para lotes ---
+  back-batch-nocturno:
+    <<: *app-base
+    profiles: ["nocturno"]
+    environment:
+      <<: *env-base
+      # +UseG1GC - rendimiento bruto aprovechando la CPU
+      # +FlightRecorder - por si algo falla snapshot de la RAM en esos segundos
+      JAVA_TOOL_OPTIONS: "-Xms1g -Xmx1g -XX:+UseG1GC -XX:+FlightRecorder -XX:StartFlightRecording=disk=true,dumponexit=true,filename=/recordings/recording_%t.jfr"
+
+    command: ["--mode=batch-analysis"]
+    volumes: 
+      - logs_nocturnos:/recordings
+
+
+  # --- osrm engine ---
+  osrm-engine:
+    image: osrm/osrm-backend:latest # v5.26.0
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osrm-data:/data
+    command: osrm-routed --algorithm mld /data/mexico-260621.osrm
+    restart: unless-stopped
+    networks:
+      - movimaps-network
+
+volumes:
+  db_data:
+  logs_nocturnos:
+
+networks:
+  movimaps-network:
