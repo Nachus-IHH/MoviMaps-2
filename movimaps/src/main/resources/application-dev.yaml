@@ -1,0 +1,18 @@
+# application-dev.yaml
+spring:
+  jpa:
+    show-sql: true
+
+  config:
+    import: optional:file:.env[.properties]
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: DEBUG
+
+api:
+  security:
+    token:
+      # JWT_SECRET_KEY ONLY for dev
+      secret: "${JWT_SECRET_KEY:Jet5qxc7OVKJeu0Q2d7hS42bMLLMs0tY9Ow64xPrNjzO0qJE2RF30LsGDYCttB6P}"

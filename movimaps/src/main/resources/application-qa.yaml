@@ -1,0 +1,4 @@
+# application-qa.yaml
+logging:
+  level:
+    root: INFO
