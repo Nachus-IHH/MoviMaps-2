@@ -1,0 +1,27 @@
+# download-map.txt
+
+# Crear y entrar directorio de trabajo
+mkdir -p osrm-data && cd osrm-data
+
+# Mapa de Mexico desde geofabrik
+# https://download.geofabrik.de/north-america/mexico.html
+wget https://download.geofabrik.de/north-america/mexico-latest.osm.pbf
+
+# Extraer, particionar y optimizar el mapa para navegación en auto (genera el archivo .osrm)
+sudo docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-extract -p /opt/car.lua /data/mexico-latest.osm.pbf
+sudo docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-partition /data/mexico-latest.osrm
+sudo docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-customize /data/mexico-latest.osrm
+cd ..
+
+# Extraer.. si no funciono
+# limpiar rastros corruptos previos
+cd osrm-data
+rm -f mexico-latest.osrm*
+
+# Ejecutar el pipeline completo compartiendo los procesos internos
+sudo docker run -t -v "$(pwd):/data" osrm/osrm-backend sh -c "
+  osrm-extract --threads=2 -p /opt/car.lua /data/mexico-latest.osm.pbf && \
+  osrm-partition /data/mexico-latest.osrm && \
+  osrm-customize /data/mexico-latest.osrm
+"
+
